@@ -93,13 +93,11 @@ data <- read.csv("./usa-house-prices/USA Housing Dataset.csv")
 head(data) 
 ```
 
-
 ```{r}
 # Load necessary libraries
 library(dplyr)
 library(readr)
-library(gt)
-
+library(kableExtra)
 
 df <- data
 
@@ -122,20 +120,15 @@ numeric_summary <- numeric_df %>%
     Max = sapply(., max, na.rm = TRUE)
   )
 
-# Create a nicely formatted table with gt
+# Create a nicely formatted table with kableExtra
 numeric_summary %>%
-  gt() %>%
-  tab_header(title = "Summary Statistics - Numeric Variables") %>%
-  fmt_number(columns = -c(1,2,3), decimals = 2) %>%  # Format numeric values
-  tab_options(
-    table.border.top.color = "black",
-    table.border.bottom.color = "black",
-    row.striping.include_table_body = TRUE
-  )
-
-
-
+  kable(format = "html", digits = 2, caption = "Summary Statistics - Numeric Variables") %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  column_spec(1, bold = TRUE)  # Make variable names bold
 ```
+
+
+
 
 # Creating a Visualization 
 
