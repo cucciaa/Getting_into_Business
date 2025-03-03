@@ -1,0 +1,263 @@
+---
+title: "README"
+output:
+ github_document:
+ pandoc_args: ["--wrap=none"]
+always_allow_html: true
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = F, message = F)
+
+
+```
+
+```{r}
+# Install required packages if not already installed
+if (!require(knitr)) install.packages("knitr", dependencies = TRUE)
+
+if (!require(curl)) install.packages("curl", dependencies = TRUE)
+if (!require(utils)) install.packages("utils", dependencies = TRUE)
+
+# Load the packages
+library(curl)
+library(utils)
+
+# Define the URL from Kaggle
+dataset_url <- "https://www.kaggle.com/api/v1/datasets/download/fratzcan/usa-house-prices"
+
+# Set the output file paths
+zip_file <- "./usa-house-prices.zip"
+extract_dir <- "./usa-house-prices"
+
+# Download the ZIP file
+curl_download(dataset_url, zip_file)
+
+# Create extraction directory if it doesn't exist
+if (!dir.exists(extract_dir)) dir.create(extract_dir)
+
+# Unzip the file
+unzip(zip_file, exdir = extract_dir)
+
+# List extracted files
+extracted_files <- list.files(extract_dir, full.names = TRUE)
+message("Download and extraction complete! Files saved at: ", extract_dir)
+message("Extracted files: ", paste(extracted_files, collapse = ", "))
+
+
+
+```
+# Part 1
+
+**When was the data collected?**
+The data was collected in 2014. The time range is from 5/2/2014 to 7/10/2014. The data was uploaded to kaggle and last updated seven months ago.
+
+**Where was the data acquired?**
+The data was acquired from kaggle.com. The data found on that website was originally on zillow.com, the real estate website.
+
+**How was the data acquired?**
+Zillow’s Economic Research Team gathers, refines, and publishes housing and economic data from both public and proprietary sources. The core of Zillow’s data is derived from public property records filed with local municipalities, including deeds, property details, parcel information, and transaction histories. Many of the statistics in these datasets are calculated from raw property data. The methodology behind these calculations is further explained in the next section, where the dataset attributes are described.
+
+**What are the attributes of this dataset?**
+The dataset consists of 18 attributes that describe various characteristics of properties. The Price variable represents the sale price of the property in USD and serves as the target variable. Property features such as Bedrooms, Bathrooms, Sqft Living, Sqft Lot, and Floors provide insight into the size and layout of the home. The View and Condition variables are ordinal indices that rate the property’s visual appeal and overall state. The Waterfront attribute is a nominal, binary indicator of whether the property has a waterfront view. Additionally, the dataset includes Yr Built and Yr Renovated, which record the year the property was originally constructed and last updated. Location-based attributes, including Street, City, State Zip, and Country, offer contextual information on where the property is situated.
+
+**What type of data do these attributes contain?**
+The dataset contains a mix of nominal, ordinal, interval, and ratio data types. Nominal variables include categorical data without an inherent order, such as Street, City, State Zip, Country, and Waterfront. Ordinal variables represent ranked attributes with meaningful order but uneven intervals, such as View, Condition, and Date. Interval data, such as Yr Built and Yr Renovated, have meaningful differences between values but no true zero point. Finally, Ratio data includes numerical attributes with a true zero, such as Price, Bedrooms, Bathrooms, Sqft Living, Sqft Lot, Floors, Sqft Above, and Sqft Basement, allowing for meaningful comparisons and calculations.
+
+
+
+```{r}
+#import data dictionary
+data_dictionary = read.csv("data_dictionary.csv")
+
+library(knitr)
+library(kableExtra)
+
+# Create a nice table with kable and kableExtra
+kable(data_dictionary, caption = "Variable Descriptions", col.names = c("Variable", "Description", "Type")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE) %>%
+  column_spec(1, bold = TRUE) %>%
+  column_spec(2, italic = TRUE) %>%
+  row_spec(0, background = "lightgray")  # Add a gray background to the header
+
+```
+
+
+
+
+```{r}
+data <- read.csv("./usa-house-prices/USA Housing Dataset.csv")
+
+head(data) 
+```
+
+
+```{r}
+# Load necessary libraries
+library(dplyr)
+library(readr)
+library(gt)
+
+
+df <- data
+
+# Select numeric columns
+numeric_df <- df %>%
+  select(where(is.numeric))
+
+# Generate summary statistics (with NA count)
+numeric_summary <- numeric_df %>%
+  reframe(
+    Variable = names(.),
+    Count = sapply(., function(x) sum(!is.na(x))),
+    Missing = sapply(., function(x) sum(is.na(x))),  # Count of NAs
+    Mean = sapply(., mean, na.rm = TRUE),
+    SD = sapply(., sd, na.rm = TRUE),
+    Min = sapply(., min, na.rm = TRUE),
+    Q1 = sapply(., quantile, 0.25, na.rm = TRUE),
+    Median = sapply(., median, na.rm = TRUE),
+    Q3 = sapply(., quantile, 0.75, na.rm = TRUE),
+    Max = sapply(., max, na.rm = TRUE)
+  )
+
+# Create a nicely formatted table with gt
+numeric_summary %>%
+  gt() %>%
+  tab_header(title = "Summary Statistics - Numeric Variables") %>%
+  fmt_number(columns = -c(1,2,3), decimals = 2) %>%  # Format numeric values
+  tab_options(
+    table.border.top.color = "black",
+    table.border.bottom.color = "black",
+    row.striping.include_table_body = TRUE
+  )
+
+
+
+```
+
+# Creating a Visualization 
+
+I woiuld like to know the difference of prices with houses with waterfronts? 
+
+
+```{r}
+if (!require(ggplot2)) install.packages("ggplot2", dependencies = TRUE)
+library(ggplot2)
+
+ggplot(data, aes(x = as.factor(waterfront), y = price)) +
+  geom_boxplot(fill = c("skyblue", "orange"), alpha = 0.7) +
+  labs(
+    x = "Waterfront (0 = No, 1 = Yes)",
+    y = "House Price",
+    title = "Comparison of House Prices: Waterfront vs. Non-Waterfront"
+  ) +
+  theme_minimal()
+
+```
+# AFter seeing the boxplot, we see a lot of outliers, here we need to make the graph look nice
+```{r}
+if (!require(scales)) install.packages("scales", dependencies = TRUE)
+
+library(dplyr)
+library(scales)
+
+mean_prices <- data %>%
+  group_by(waterfront) %>%
+  summarise(Mean_Price = mean(price, na.rm = TRUE)) %>%
+  mutate(Mean_Price = dollar(Mean_Price))  # Format with $ and commas
+
+print(mean_prices)
+
+```
+```{r}
+# Calculate Q1, Q3, and IQR for each category
+outlier_detection <- data %>%
+  group_by(waterfront) %>%
+  summarise(
+    Q1 = quantile(price, 0.25),
+    Q3 = quantile(price, 0.75),
+    IQR = Q3 - Q1,
+    Lower_Bound = Q1 - 1.5 * IQR,
+    Upper_Bound = Q3 + 1.5 * IQR
+  )
+
+# Merge with the original data to flag outliers
+data_with_outliers <- merge(data, outlier_detection, by = "waterfront")
+
+# Filter outlier houses
+outliers <- data_with_outliers %>%
+  filter(price < Lower_Bound | price > Upper_Bound)
+
+head(outliers)
+
+ncol(outliers)
+
+```
+#Above is the list of outliers removed 
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+# Calculate IQR and filter out outliers
+filtered_data <- data %>%
+  group_by(waterfront) %>%
+  mutate(
+    Q1 = quantile(price, 0.25, na.rm = TRUE),
+    Q3 = quantile(price, 0.75, na.rm = TRUE),
+    IQR = Q3 - Q1,
+    Lower_Bound = Q1 - 1.5 * IQR,
+    Upper_Bound = Q3 + 1.5 * IQR
+  ) %>%
+  filter(price >= Lower_Bound & price <= Upper_Bound) %>%
+  ungroup()
+
+# Create the boxplot without outliers
+ggplot(filtered_data, aes(x = as.factor(waterfront), y = price)) +
+  geom_boxplot(fill = c("skyblue", "orange"), alpha = 0.7) +
+  labs(
+    x = "Waterfront (0 = No, 1 = Yes)",
+    y = "House Price",
+    title = "House Prices: Waterfront vs. Non-Waterfront (Without Outliers)"
+  ) +
+  theme_minimal()
+
+```
+
+
+
+
+
+```{r}
+library(dplyr)
+
+# Calculate IQR for non-waterfront houses (waterfront == 0)
+non_waterfront_stats <- data %>%
+  filter(waterfront == 0) %>%
+  summarise(
+    Q1 = quantile(price, 0.25, na.rm = TRUE),
+    Q3 = quantile(price, 0.75, na.rm = TRUE),
+    IQR = Q3 - Q1,
+    Lower_Bound = Q1 - 1.5 * IQR,
+    Upper_Bound = Q3 + 1.5 * IQR
+  )
+
+# Identify outliers and non-outliers
+non_waterfront_outliers <- data %>%
+  filter(waterfront == 0 & (price < non_waterfront_stats$Lower_Bound | price > non_waterfront_stats$Upper_Bound))
+
+non_waterfront_non_outliers <- data %>%
+  filter(waterfront == 0 & (price >= non_waterfront_stats$Lower_Bound & price <= non_waterfront_stats$Upper_Bound))
+
+# Calculate the average sqft_lot
+avg_sqft_lot_outliers <- mean(non_waterfront_outliers$sqft_lot, na.rm = TRUE)
+avg_sqft_lot_non_outliers <- mean(non_waterfront_non_outliers$sqft_lot, na.rm = TRUE)
+
+# Print results
+cat("Average sqft_lot of non-waterfront outliers:", avg_sqft_lot_outliers, "\n")
+cat("Average sqft_lot of non-waterfront non-outliers:", avg_sqft_lot_non_outliers, "\n")
+
+```
+
