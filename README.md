@@ -1,6 +1,8 @@
 README
 ================
 
+**The code below shows packages and where the data was obtained.**
+
 ``` r
 # Install required packages if not already installed
 if (!require(knitr)) install.packages("knitr", dependencies = TRUE)
@@ -34,7 +36,7 @@ message("Download and extraction complete! Files saved at: ", extract_dir)
 message("Extracted files: ", paste(extracted_files, collapse = ", "))
 ```
 
-# Part 1
+# Zillow Economics Data
 
 **When was the data collected?** The data was collected in 2014. The
 time range is from 5/2/2014 to 7/10/2014. The data was uploaded to
@@ -78,6 +80,13 @@ zero point. Finally, Ratio data includes numerical attributes with a
 true zero, such as Price, Bedrooms, Bathrooms, Sqft Living, Sqft Lot,
 Floors, Sqft Above, and Sqft Basement, allowing for meaningful
 comparisons and calculations.
+
+# Data and Analysis
+
+**The following code below shows a table that presents a dataset with
+variables and their corresponding descriptions. The rightmost column
+specifies the data type for each variable, which can be ordinal, ratio,
+interval, or nominal.**
 
 ``` r
 #import data dictionary
@@ -331,6 +340,11 @@ Nominal
 </tbody>
 </table>
 
+The code below represents the data being read as a CSV file into the
+data frame. The resulting dataset is stored in the variable data, which
+is now a data frame. The code head(data) prints the first 6 rows of the
+dataset, allowing you to quickly inspect its structure and contents.
+
 ``` r
 data <- read.csv("./usa-house-prices/USA Housing Dataset.csv")
 
@@ -359,24 +373,43 @@ head(data)
     ## 5          10834 31st Ave SW      Seattle WA 98146     USA
     ## 6 Cedar to Green River Trail Maple Valley WA 98038     USA
 
+The code below shows an improved representation of the table that was
+above. For example, the data below represents the summary statistics
+table for the variables. This script pulls all numeric variables from
+the dataset and calculates summary statistics, including count, missing
+values, mean, standard deviation, min, mode, quartiles, and max.
+
 ``` r
 # Load necessary libraries
 library(dplyr)
 library(readr)
 library(kableExtra)
 
+# Function to calculate mode
+calculate_mode <- function(x) {
+  unique_x <- na.omit(x)
+  if (length(unique_x) == 0) return(NA)
+  mode_value <- unique_x[which.max(tabulate(match(x, unique_x)))]
+  return(mode_value)
+}
+
+# Load data
 df <- data
 
 # Select numeric columns
 numeric_df <- df %>%
   select(where(is.numeric))
 
-# Generate summary statistics (with NA count)
+# Select nominal (categorical) columns
+nominal_df <- df %>%
+  select(where(is.character) | where(is.factor))
+
+# Generate summary statistics for numeric variables
 numeric_summary <- numeric_df %>%
   reframe(
     Variable = names(.),
     Count = sapply(., function(x) sum(!is.na(x))),
-    Missing = sapply(., function(x) sum(is.na(x))),  # Count of NAs
+    Missing = sapply(., function(x) sum(is.na(x))),
     Mean = sapply(., mean, na.rm = TRUE),
     SD = sapply(., sd, na.rm = TRUE),
     Min = sapply(., min, na.rm = TRUE),
@@ -386,11 +419,20 @@ numeric_summary <- numeric_df %>%
     Max = sapply(., max, na.rm = TRUE)
   )
 
-# Create a nicely formatted table with kableExtra
+# Generate summary statistics for nominal variables
+nominal_summary <- nominal_df %>%
+  reframe(
+    Variable = names(.),
+    Count = sapply(., function(x) sum(!is.na(x))),
+    Missing = sapply(., function(x) sum(is.na(x))),
+    Mode = sapply(., calculate_mode)
+  )
+
+# Create formatted tables with kableExtra
 numeric_summary %>%
   kable(format = "html", digits = 2, caption = "Summary Statistics - Numeric Variables") %>%
   kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
-  column_spec(1, bold = TRUE)  # Make variable names bold
+  column_spec(1, bold = TRUE)
 ```
 
 <table class="table table-striped table-hover table-condensed table-responsive" style="color: black; width: auto !important; margin-left: auto; margin-right: auto;">
@@ -851,10 +893,117 @@ yr_renovated
 </tbody>
 </table>
 
+``` r
+nominal_summary %>%
+  kable(format = "html", caption = "Summary Statistics - Nominal Variables") %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  column_spec(1, bold = TRUE)
+```
+
+<table class="table table-striped table-hover table-condensed table-responsive" style="color: black; width: auto !important; margin-left: auto; margin-right: auto;">
+<caption>
+Summary Statistics - Nominal Variables
+</caption>
+<thead>
+<tr>
+<th style="text-align:left;">
+Variable
+</th>
+<th style="text-align:right;">
+Count
+</th>
+<th style="text-align:right;">
+Missing
+</th>
+<th style="text-align:left;">
+Mode
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;font-weight: bold;">
+date
+</td>
+<td style="text-align:right;">
+4140
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:left;">
+2014-06-23 00:00:00
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-weight: bold;">
+street
+</td>
+<td style="text-align:right;">
+4140
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:left;">
+2520 Mulberry Walk NE
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-weight: bold;">
+city
+</td>
+<td style="text-align:right;">
+4140
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:left;">
+Seattle
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-weight: bold;">
+statezip
+</td>
+<td style="text-align:right;">
+4140
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:left;">
+WA 98103
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-weight: bold;">
+country
+</td>
+<td style="text-align:right;">
+4140
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:left;">
+USA
+</td>
+</tr>
+</tbody>
+</table>
+
 # Creating a Visualization
 
-I woiuld like to know the difference of prices with houses with
-waterfronts?
+The question I wanted to answer was whether house prices are influenced
+by whether a property is waterfront or not. Below, we created a boxplot
+to compare house prices for waterfront and non-waterfront properties.
+The term waterfront, which was converted to a factor to represent the
+x-axis and price on the y-axis. From here, the boxplots were colorized
+based on their numerical value. There was one issue with the data
+however, it represented a fair number of outliers which skewed the data
+making it difficult to read the boxplots.
 
 ``` r
 if (!require(ggplot2)) install.packages("ggplot2", dependencies = TRUE)
@@ -870,9 +1019,9 @@ ggplot(data, aes(x = as.factor(waterfront), y = price)) +
   theme_minimal()
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-5-1.png)<!-- --> \# AFter
-seeing the boxplot, we see a lot of outliers, here we need to make the
-graph look nice
+![](README_files/figure-gfm/unnamed-chunk-5-1.png)<!-- --> **The code
+below represents the process of obtaining the dollar values of the
+waterfront and non-waterfront homes.**
 
 ``` r
 if (!require(scales)) install.packages("scales", dependencies = TRUE)
@@ -893,6 +1042,17 @@ print(mean_prices)
     ##        <int> <chr>     
     ## 1          0 $546,402  
     ## 2          1 $1,435,968
+
+This code calculates the outlier bounds for house prices based on the
+waterfront property category. It first computes the first (Q1) and third
+(Q3) quartiles, as well as the interquartile range (IQR), for both
+waterfront and non-waterfront properties. Using these values, it
+determines the lower and upper bounds for outliers, which are set at 1.5
+times the IQR below Q1 and above Q3. Then, it merges these calculations
+with the original dataset and filters out the houses whose prices fall
+outside these bounds. Finally, it displays the outliers and checks how
+many columns are in the resulting dataset. This process helps identify
+extreme house prices that could skew the analysis.
 
 ``` r
 # Calculate Q1, Q3, and IQR for each category
@@ -951,7 +1111,7 @@ ncol(outliers)
 
     ## [1] 23
 
-\#Above is the list of outliers removed
+**Above is the list of all the outliers removed.**
 
 ``` r
 library(ggplot2)
@@ -981,7 +1141,14 @@ ggplot(filtered_data, aes(x = as.factor(waterfront), y = price)) +
   theme_minimal()
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
+![](README_files/figure-gfm/unnamed-chunk-8-1.png)<!-- --> **The code
+above represents a distribution of housing prices of waterfront v.
+non-waterfront properties using boxplots. After loading the different
+libraries, we calculated the first quartile, third quartile, and
+interquartile range of prices. For determing outliers, we considered
+anything below Q1 - 1.5 \* IQR or above Q3 + 1.5 \* IQR. Lastly, a
+boxplot was created to compare the hopsuing prices for waterfront and
+non-waterfront properties.**
 
 ``` r
 library(dplyr)
@@ -1019,3 +1186,39 @@ cat("Average sqft_lot of non-waterfront non-outliers:", avg_sqft_lot_non_outlier
 ```
 
     ## Average sqft_lot of non-waterfront non-outliers: 14425.07
+
+**First, we filtered out only non-waterfront houses. Then we calculated
+the first quartile, third quartile, and interquartile range. Next, we
+filtered for outliers, which we considered were non-waterfront houses
+priced outside the IQR-based bounds and non-outliers which were
+non-waterfront houses priced inside the bounds. The purpose of this was
+to assure if non-waterfront houses that are price outliers tend to have
+larger or smaller lot sizes compared to common non-waterfront houses.**
+
+# Additional Data Source for Investment Strategy
+
+## Real Estate Market Trends Dataset
+
+One useful additional dataset for informing an investment strategy would
+be a real estate market trends dataset, such as **Zillow’s Housing
+Data** or the **Federal Housing Finance Agency (FHFA) House Price
+Index**.
+
+### Why would this dataset be useful?
+
+This dataset would provide insights into housing price trends over time,
+mortgage rates, and regional market fluctuations. Understanding
+historical trends can help predict future property values and assess
+whether a given area is appreciating or depreciating in value.
+
+### How could it complement the data you are currently analyzing?
+
+The current dataset focuses on specific property features (e.g.,
+waterfront status) and their impact on prices. However, macroeconomic
+factors, such as interest rates, inflation, and supply-demand dynamics,
+also influence real estate prices. A market trends dataset would provide
+a broader economic context to better assess investment potential.
+
+### Additional Dataset Link:
+
+- [Zillow Research Data](https://www.zillow.com/research/data/)
